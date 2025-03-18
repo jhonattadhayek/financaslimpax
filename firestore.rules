@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Funções auxiliares
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Regras para coleção de usuários
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if true;  // Permitir criação inicial de usuários
+      allow update, delete: if isAdmin();
+    }
+
+    match /financial_categories/{document} {
+      allow read, write: if isAuthenticated();
+    }
+    match /payment_methods/{document} {
+      allow read, write: if isAuthenticated();
+    }
+    match /financial_transactions/{document} {
+      allow read, write: if isAuthenticated();
+    }
+    match /recurring_transactions/{document} {
+      allow read, write: if isAuthenticated();
+    }
+    match /contracts/{document} {
+      allow read, write: if isAuthenticated();
+    }
+    match /monthly_records/{document} {
+      allow read, write: if isAuthenticated();
+    }
+    match /suppliers/{document} {
+      allow read, write: if isAuthenticated();
+    }
+    match /employees/{document} {
+      allow read, write: if isAuthenticated();
+    }
+    match /employee_dismissals/{document} {
+      allow read, write: if isAuthenticated();
+    }
+    match /employee_vacations/{document} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

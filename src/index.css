@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-background: 249 250 251;
+    --color-surface: 255 255 255;
+    --color-surface-hover: 243 244 246;
+    --color-border: 229 231 235;
+    --color-text: 17 24 39;
+    --color-text-secondary: 107 114 128;
+    --color-primary: 14 165 233;
+  }
+
+  :root[class~="dark"] {
+    --color-background: 17 24 39;
+    --color-surface: 31 41 55;
+    --color-surface-hover: 55 65 81;
+    --color-border: 75 85 99;
+    --color-text: 243 244 246;
+    --color-text-secondary: 156 163 175;
+    --color-primary: 56 189 248;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background text-text;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface rounded-xl border border-border/10;
+  }
+
+  .input {
+    @apply w-full px-4 py-2 bg-surface border border-border/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20;
+  }
+
+  .button-primary {
+    @apply px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors;
+  }
+
+  .button-secondary {
+    @apply px-4 py-2 bg-surface border border-border/10 rounded-lg hover:bg-surface-hover transition-colors;
+  }
+
+  .tab {
+    @apply px-4 py-2 text-text-secondary hover:text-text transition-colors;
+  }
+
+  .tab-active {
+    @apply text-primary border-b-2 border-primary;
+  }
+}
