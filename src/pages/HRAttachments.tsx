@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Loader2, FileText } from 'lucide-react';
-import { Contract } from '../types/contract';
-import { getContracts } from '../services/contracts';
+import { Plus, Loader2, FileText, X } from 'lucide-react';
+import { Contract, getContracts } from '../services/contracts';
 import { uploadFile } from '../services/storage';
+import { collection, addDoc, getDocs, query, orderBy, Timestamp, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
 interface HRAttachment {
   id: string;
@@ -23,6 +24,7 @@ function HRAttachments() {
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -34,6 +36,7 @@ function HRAttachments() {
 
   useEffect(() => {
     loadContracts();
+    loadAttachments();
   }, []);
 
   const loadContracts = async () => {
@@ -48,14 +51,50 @@ function HRAttachments() {
     }
   };
 
+  const loadAttachments = async () => {
+    try {
+      const attachmentsRef = collection(db, 'hr_attachments');
+      const q = query(attachmentsRef, orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      
+      const attachmentsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as HRAttachment[];
+
+      setAttachments(attachmentsData);
+    } catch (error) {
+      console.error('Erro ao carregar anexos:', error);
+      setError('Erro ao carregar anexos');
+    }
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       // Validar tamanho do arquivo (máximo 10MB)
       if (file.size > 10 * 1024 * 1024) {
         setError('Arquivo muito grande. Tamanho máximo: 10MB');
+        event.target.value = '';
         return;
       }
+
+      // Validar tipo do arquivo
+      const allowedTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'text/plain'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        setError('Tipo de arquivo não permitido. Use PDF, DOC, DOCX, JPG, PNG ou TXT');
+        event.target.value = '';
+        return;
+      }
+
       setSelectedFile(file);
       setError(null);
     }
@@ -63,26 +102,39 @@ function HRAttachments() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedFile) {
+      setError('Selecione um arquivo para upload');
+      return;
+    }
     
     try {
       setUploading(true);
-      let fileUrl = '';
-      let fileName = '';
+      setError(null);
+      setUploadProgress(0);
 
-      if (selectedFile) {
-        fileUrl = await uploadFile(selectedFile);
-        fileName = selectedFile.name;
-      }
+      // Upload do arquivo
+      const fileUrl = await uploadFile(selectedFile, (progress) => {
+        setUploadProgress(progress);
+      });
 
-      const newAttachment: HRAttachment = {
-        id: crypto.randomUUID(),
+      // Salvar no Firestore
+      const newAttachment = {
         ...formData,
-        createdAt: new Date().toISOString(),
         fileUrl,
-        fileName
+        fileName: selectedFile.name,
+        createdAt: Timestamp.now()
       };
 
-      setAttachments(prev => [newAttachment, ...prev]);
+      const docRef = await addDoc(collection(db, 'hr_attachments'), newAttachment);
+      
+      // Atualizar lista de anexos
+      setAttachments(prev => [{
+        id: docRef.id,
+        ...newAttachment,
+        createdAt: newAttachment.createdAt.toDate().toISOString()
+      }, ...prev]);
+
+      // Resetar form
       setIsModalOpen(false);
       setFormData({
         name: '',
@@ -91,12 +143,24 @@ function HRAttachments() {
         contractId: ''
       });
       setSelectedFile(null);
-      setError(null);
+      setUploadProgress(0);
     } catch (error) {
       console.error('Erro ao salvar anexo:', error);
       setError('Erro ao salvar anexo. Tente novamente.');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleDelete = async (attachment: HRAttachment) => {
+    if (!confirm('Tem certeza que deseja excluir este anexo?')) return;
+
+    try {
+      await deleteDoc(doc(db, 'hr_attachments', attachment.id));
+      setAttachments(prev => prev.filter(a => a.id !== attachment.id));
+    } catch (error) {
+      console.error('Erro ao excluir anexo:', error);
+      alert('Erro ao excluir anexo. Tente novamente.');
     }
   };
 
@@ -124,8 +188,11 @@ function HRAttachments() {
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-500/10 text-red-500 p-4 rounded-lg">
-          {error}
+        <div className="bg-red-500/10 text-red-500 p-4 rounded-lg flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-600">
+            <X size={20} />
+          </button>
         </div>
       )}
 
@@ -133,7 +200,20 @@ function HRAttachments() {
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">Novo Anexo</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Novo Anexo</h2>
+              <button
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setSelectedFile(null);
+                  setError(null);
+                  setUploadProgress(0);
+                }}
+                className="text-text-secondary hover:text-text"
+              >
+                <X size={20} />
+              </button>
+            </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -203,6 +283,7 @@ function HRAttachments() {
                     onChange={handleFileSelect}
                     className="hidden"
                     id="file-input"
+                    accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
                   />
                   <label
                     htmlFor="file-input"
@@ -219,6 +300,20 @@ function HRAttachments() {
                 </div>
               </div>
 
+              {uploading && (
+                <div className="space-y-2">
+                  <div className="h-2 bg-surface rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  <div className="text-sm text-text-secondary text-center">
+                    {uploadProgress.toFixed(0)}% concluído
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 mt-6">
                 <button
                   type="button"
@@ -226,6 +321,7 @@ function HRAttachments() {
                     setIsModalOpen(false);
                     setSelectedFile(null);
                     setError(null);
+                    setUploadProgress(0);
                   }}
                   className="px-4 py-2 text-text-secondary hover:bg-surface rounded-lg transition-colors"
                   disabled={uploading}
@@ -235,12 +331,12 @@ function HRAttachments() {
                 <button
                   type="submit"
                   className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={uploading}
+                  disabled={uploading || !selectedFile}
                 >
                   {uploading ? (
                     <div className="flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Salvando...</span>
+                      <span>Enviando...</span>
                     </div>
                   ) : (
                     'Salvar'
@@ -283,6 +379,13 @@ function HRAttachments() {
                       Ver arquivo
                     </a>
                   )}
+                  <button
+                    onClick={() => handleDelete(attachment)}
+                    className="p-1.5 rounded-md text-red-400 hover:text-red-500 hover:bg-red-400/10 transition-colors"
+                    title="Excluir"
+                  >
+                    <X size={16} />
+                  </button>
                   <span className="text-sm bg-surface-hover px-2 py-1 rounded">
                     {contracts.find(c => c.id === attachment.contractId)?.municipality_name}
                   </span>

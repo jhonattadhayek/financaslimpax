@@ -65,8 +65,8 @@ export function SuppliersTab({ onCostUpdate }: Props) {
         service: formData.get('service') as string,
         document: formData.get('document') as string,
         payment_method: formData.get('payment_method') as string,
-        contract_value: Number(formData.get('contract_value')),
-        paid_value: Number(formData.get('paid_value')),
+        contract_value: formData.get('contract_value') ? Number(formData.get('contract_value')) : 0,
+        paid_value: formData.get('paid_value') ? Number(formData.get('paid_value')) : 0,
         payment_date: formData.get('payment_date') as string,
         is_headquarter: isHeadquarter,
         contract_id: !isHeadquarter ? selectedContractId : undefined
@@ -100,8 +100,8 @@ export function SuppliersTab({ onCostUpdate }: Props) {
         service: formData.get('service') as string,
         document: formData.get('document') as string,
         payment_method: formData.get('payment_method') as string,
-        contract_value: Number(formData.get('contract_value')),
-        paid_value: Number(formData.get('paid_value')),
+        contract_value: formData.get('contract_value') ? Number(formData.get('contract_value')) : 0,
+        paid_value: formData.get('paid_value') ? Number(formData.get('paid_value')) : 0,
         payment_date: formData.get('payment_date') as string,
         is_headquarter: isHeadquarter,
         contract_id: !isHeadquarter ? selectedContractId : undefined
@@ -317,7 +317,6 @@ export function SuppliersTab({ onCostUpdate }: Props) {
                     className="input"
                     step="0.01"
                     defaultValue={editingSupplier?.contract_value}
-                    required
                   />
                 </div>
                 <div>
@@ -328,7 +327,6 @@ export function SuppliersTab({ onCostUpdate }: Props) {
                     className="input"
                     step="0.01"
                     defaultValue={editingSupplier?.paid_value}
-                    required
                   />
                 </div>
               </div>
