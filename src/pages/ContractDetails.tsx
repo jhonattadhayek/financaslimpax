@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Plus, Edit2, Trash2, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Contract, getContractById, updateContract } from '../services/contracts';
-import { MonthlyRecord, getMonthlyRecords, createMonthlyRecord, deleteMonthlyRecord } from '../services/monthly-records';
+import { MonthlyRecord, getMonthlyRecords, createMonthlyRecord, deleteMonthlyRecord, updateMonthlyRecord } from '../services/monthly-records';
 
 function ContractDetails() {
   const { id } = useParams();
@@ -11,6 +11,7 @@ function ContractDetails() {
   const [monthlyRecords, setMonthlyRecords] = useState<MonthlyRecord[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<MonthlyRecord | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +99,35 @@ function ContractDetails() {
     } catch (err) {
       console.error('Erro ao deletar registro:', err);
       alert('Erro ao deletar registro. Tente novamente.');
+    }
+  };
+
+  const handleEditRecord = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingRecord) return;
+
+    const form = e.target as HTMLFormElement;
+    const formData = new FormData(form);
+
+    try {
+      const updatedRecord = {
+        month: Number(formData.get('month')),
+        year: Number(formData.get('year')),
+        revenue: Number(formData.get('revenue')),
+        expenses: Number(formData.get('expenses')),
+        employees_count: Number(formData.get('employees_count')),
+        notes: formData.get('notes') as string | null
+      };
+
+      const updated = await updateMonthlyRecord(editingRecord.id, updatedRecord);
+      setMonthlyRecords(prev => prev.map(record => 
+        record.id === updated.id ? updated : record
+      ));
+      setEditingRecord(null);
+      form.reset();
+    } catch (err) {
+      console.error('Erro ao atualizar registro:', err);
+      alert('Erro ao atualizar registro. Tente novamente.');
     }
   };
 
@@ -199,6 +229,12 @@ function ContractDetails() {
                   <p className="text-text-secondary">{record.notes}</p>
                 </div>
                 <div className="flex space-x-2">
+                  <button
+                    onClick={() => setEditingRecord(record)}
+                    className="p-2 text-blue-400 hover:text-blue-500 transition-colors"
+                  >
+                    <Edit2 size={20} />
+                  </button>
                   <button
                     onClick={() => handleDeleteRecord(record.id)}
                     className="p-2 text-red-400 hover:text-red-500 transition-colors"
@@ -366,6 +402,101 @@ function ContractDetails() {
                 </button>
                 <button type="submit" className="button-primary">
                   Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for editing monthly record */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="card p-6 w-full max-w-xl">
+            <h2 className="text-xl font-bold mb-6 bg-gradient-to-r from-sky-400 to-blue-500 dark:from-sky-300 dark:to-blue-400 bg-clip-text text-transparent">
+              Editar Registro Mensal
+            </h2>
+            <form className="space-y-4" onSubmit={handleEditRecord}>
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Mês</label>
+                <input 
+                  type="number" 
+                  name="month"
+                  className="input"
+                  defaultValue={editingRecord.month}
+                  min="1"
+                  max="12"
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Ano</label>
+                <input 
+                  type="number" 
+                  name="year"
+                  className="input"
+                  defaultValue={editingRecord.year}
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Receita</label>
+                <input 
+                  type="number" 
+                  name="revenue"
+                  className="input" 
+                  placeholder="0,00"
+                  step="0.01"
+                  defaultValue={editingRecord.revenue}
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Despesas</label>
+                <input 
+                  type="number" 
+                  name="expenses"
+                  className="input" 
+                  placeholder="0,00"
+                  step="0.01"
+                  defaultValue={editingRecord.expenses}
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Quantidade de Funcionários</label>
+                <input 
+                  type="number" 
+                  name="employees_count"
+                  className="input" 
+                  placeholder="0"
+                  min="0"
+                  defaultValue={editingRecord.employees_count}
+                  required 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text mb-2">Observações</label>
+                <textarea 
+                  name="notes"
+                  className="input"
+                  placeholder="Adicione observações..."
+                  defaultValue={editingRecord.notes || ''}
+                />
+              </div>
+              <div className="flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={() => setEditingRecord(null)}
+                  className="button-secondary"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="button-primary"
+                >
+                  Salvar Alterações
                 </button>
               </div>
             </form>

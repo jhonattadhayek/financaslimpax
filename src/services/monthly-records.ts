@@ -76,19 +76,26 @@ export async function createMonthlyRecord(record: Omit<MonthlyRecord, 'id' | 'cr
   return convertMonthlyRecordFromFirestore(newDoc.id, newDoc.data() as FirestoreMonthlyRecord);
 }
 
-export async function updateMonthlyRecord(
-  id: string,
-  record: Partial<Omit<MonthlyRecord, 'id' | 'created_at' | 'updated_at'>>
-) {
-  const recordRef = doc(db, 'monthly_records', id);
-  const updateData = {
-    ...record,
-    updated_at: Timestamp.now()
-  };
-  
-  await updateDoc(recordRef, updateData);
-  const updatedDoc = await getDoc(recordRef);
-  return convertMonthlyRecordFromFirestore(updatedDoc.id, updatedDoc.data() as FirestoreMonthlyRecord);
+export async function updateMonthlyRecord(id: string, data: Omit<MonthlyRecord, 'id' | 'contract_id' | 'created_at' | 'updated_at'>) {
+  try {
+    const recordRef = doc(db, 'monthly_records', id);
+    const now = Timestamp.now();
+    
+    await updateDoc(recordRef, {
+      ...data,
+      updated_at: now
+    });
+
+    const updatedDoc = await getDoc(recordRef);
+    if (!updatedDoc.exists()) {
+      throw new Error('Registro não encontrado');
+    }
+
+    return convertMonthlyRecordFromFirestore(updatedDoc.id, updatedDoc.data() as FirestoreMonthlyRecord);
+  } catch (error) {
+    console.error('Erro ao atualizar registro mensal:', error);
+    throw error;
+  }
 }
 
 export async function deleteMonthlyRecord(id: string) {

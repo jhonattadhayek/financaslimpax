@@ -339,7 +339,6 @@ export function SuppliersTab({ onCostUpdate }: Props) {
                     name="payment_date"
                     className="input"
                     defaultValue={editingSupplier?.payment_date}
-                    required
                   />
                 </div>
                 <div className="flex items-center">

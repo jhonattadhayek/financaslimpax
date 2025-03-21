@@ -81,7 +81,7 @@ export async function createSupplier(supplier: Omit<Supplier, 'id' | 'created_at
   
   const docRef = await addDoc(suppliersRef, {
     ...supplier,
-    payment_date: Timestamp.fromDate(new Date(supplier.payment_date)),
+    payment_date: supplier.payment_date ? Timestamp.fromDate(new Date(supplier.payment_date)) : now,
     created_at: now,
     updated_at: now,
     is_headquarter: supplier.is_headquarter || false,
