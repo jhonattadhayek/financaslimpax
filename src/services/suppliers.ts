@@ -44,24 +44,43 @@ const convertSupplierFromFirestore = (id: string, data: FirestoreSupplier): Supp
 
 export async function getSuppliers(filters?: { startDate?: string; endDate?: string }) {
   const suppliersRef = collection(db, 'suppliers');
-  let constraints: any[] = [];
-
-  if (filters) {
+  
+  // Se temos filtros de data, precisamos fazer duas consultas:
+  // 1. Uma para fornecedores com data de pagamento dentro do intervalo
+  // 2. Outra para fornecedores sem data de pagamento (null)
+  let allDocs: any[] = [];
+  
+  if (filters && (filters.startDate || filters.endDate)) {
+    let dateConstraints: any[] = [];
+    
     if (filters.startDate) {
-      constraints.push(where('payment_date', '>=', Timestamp.fromDate(new Date(filters.startDate))));
+      dateConstraints.push(where('payment_date', '>=', Timestamp.fromDate(new Date(filters.startDate))));
     }
     if (filters.endDate) {
-      constraints.push(where('payment_date', '<=', Timestamp.fromDate(new Date(filters.endDate))));
+      dateConstraints.push(where('payment_date', '<=', Timestamp.fromDate(new Date(filters.endDate))));
     }
+    
+    // Consulta para fornecedores com data dentro do intervalo
+    const dateQuery = query(suppliersRef, ...dateConstraints);
+    const dateSnapshot = await getDocs(dateQuery);
+    
+    // Consulta para fornecedores sem data de pagamento
+    const nullQuery = query(suppliersRef, where('payment_date', '==', null));
+    const nullSnapshot = await getDocs(nullQuery);
+    
+    // Combinar os resultados
+    allDocs = [...dateSnapshot.docs, ...nullSnapshot.docs];
+  } else {
+    // Se não há filtros de data, buscar todos os fornecedores
+    const q = query(suppliersRef);
+    const snapshot = await getDocs(q);
+    allDocs = snapshot.docs;
   }
-
-  const q = query(suppliersRef, ...constraints);
-  const snapshot = await getDocs(q);
   
   // Ordenar no cliente
-  return snapshot.docs
-    .map(doc => convertSupplierFromFirestore(doc.id, doc.data() as FirestoreSupplier))
-    .sort((a, b) => {
+  return allDocs
+    .map((doc: any) => convertSupplierFromFirestore(doc.id, doc.data() as FirestoreSupplier))
+    .sort((a: Supplier, b: Supplier) => {
       // Se ambas as datas existirem, compara normalmente
       if (a.payment_date && b.payment_date) {
         return new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime();
@@ -135,5 +154,5 @@ export async function deleteSupplier(id: string) {
 
 export async function getSuppliersTotalCost(startDate?: string, endDate?: string) {
   const suppliers = await getSuppliers({ startDate, endDate });
-  return suppliers.reduce((total, supplier) => total + supplier.paid_value, 0);
+  return suppliers.reduce((total: number, supplier: Supplier) => total + supplier.paid_value, 0);
 }

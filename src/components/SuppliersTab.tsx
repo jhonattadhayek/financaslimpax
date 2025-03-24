@@ -44,7 +44,7 @@ export function SuppliersTab({ onCostUpdate }: Props) {
       const data = await getSuppliers({ startDate, endDate });
       setSuppliers(data);
       
-      const totalCost = data.reduce((sum, supplier) => sum + supplier.paid_value, 0);
+      const totalCost = data.reduce((sum: number, supplier: Supplier) => sum + supplier.paid_value, 0);
       onCostUpdate(totalCost);
     } catch (err) {
       console.error('Erro ao carregar fornecedores:', err);
@@ -79,7 +79,7 @@ export function SuppliersTab({ onCostUpdate }: Props) {
       setIsHeadquarter(false);
       setSelectedContractId('');
       
-      const totalCost = suppliers.reduce((sum, supplier) => sum + supplier.paid_value, 0) + newSupplier.paid_value;
+      const totalCost = suppliers.reduce((sum: number, supplier: Supplier) => sum + supplier.paid_value, 0) + newSupplier.paid_value;
       onCostUpdate(totalCost);
     } catch (err) {
       console.error('Erro ao criar fornecedor:', err);
@@ -113,7 +113,7 @@ export function SuppliersTab({ onCostUpdate }: Props) {
       setIsHeadquarter(false);
       setSelectedContractId('');
       
-      const totalCost = suppliers.reduce((sum, supplier) => 
+      const totalCost = suppliers.reduce((sum: number, supplier: Supplier) => 
         supplier.id === editingSupplier.id ? sum + updatedData.paid_value : sum + supplier.paid_value, 0
       );
       onCostUpdate(totalCost);
@@ -131,7 +131,7 @@ export function SuppliersTab({ onCostUpdate }: Props) {
       const updatedSuppliers = suppliers.filter(s => s.id !== id);
       setSuppliers(updatedSuppliers);
       
-      const totalCost = updatedSuppliers.reduce((sum, supplier) => sum + supplier.paid_value, 0);
+      const totalCost = updatedSuppliers.reduce((sum: number, supplier: Supplier) => sum + supplier.paid_value, 0);
       onCostUpdate(totalCost);
     } catch (err) {
       console.error('Erro ao deletar fornecedor:', err);
