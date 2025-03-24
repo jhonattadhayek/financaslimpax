@@ -211,10 +211,18 @@ export function SuppliersTab({ onCostUpdate }: Props) {
               </div>
               
               <div>
-                <div className="text-xs text-text-secondary uppercase tracking-wider mb-1">Valor do Contrato</div>
-                <div className="font-medium text-sm">R$ {supplier.contract_value.toLocaleString()}</div>
-                <div className="text-xs text-text-secondary uppercase tracking-wider mb-1 mt-3">Valor Pago</div>
-                <div className="font-medium text-sm">R$ {supplier.paid_value.toLocaleString()}</div>
+                {supplier.contract_value > 0 && (
+                  <>
+                    <div className="text-xs text-text-secondary uppercase tracking-wider mb-1">Valor do Contrato</div>
+                    <div className="font-medium text-sm">R$ {supplier.contract_value.toLocaleString()}</div>
+                  </>
+                )}
+                {supplier.paid_value > 0 && (
+                  <>
+                    <div className="text-xs text-text-secondary uppercase tracking-wider mb-1 mt-3">Valor Pago</div>
+                    <div className="font-medium text-sm">R$ {supplier.paid_value.toLocaleString()}</div>
+                  </>
+                )}
                 <div className="text-xs text-text-secondary uppercase tracking-wider mb-1 mt-3">Local</div>
                 <div className="font-medium text-sm">
                   {supplier.is_headquarter ? 'SEDE' : contracts.find(c => c.id === supplier.contract_id)?.municipality_name || 'N/A'}
@@ -222,12 +230,14 @@ export function SuppliersTab({ onCostUpdate }: Props) {
               </div>
               
               <div className="flex flex-col justify-between">
-                <div>
-                  <div className="text-xs text-text-secondary uppercase tracking-wider mb-1">Data</div>
-                  <div className="font-medium text-sm">
-                    {new Date(supplier.payment_date).toLocaleDateString()}
+                {supplier.payment_date && supplier.payment_date.trim() !== '' && (
+                  <div>
+                    <div className="text-xs text-text-secondary uppercase tracking-wider mb-1">Data</div>
+                    <div className="font-medium text-sm">
+                      {new Date(supplier.payment_date).toLocaleDateString()}
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="flex justify-end space-x-2 mt-2">
                   <button
                     onClick={() => {

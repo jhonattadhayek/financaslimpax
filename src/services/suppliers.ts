@@ -37,7 +37,7 @@ type FirestoreSupplier = Omit<Supplier, 'id' | 'created_at' | 'updated_at' | 'pa
 const convertSupplierFromFirestore = (id: string, data: FirestoreSupplier): Supplier => ({
   id,
   ...data,
-  payment_date: data.payment_date.toDate().toISOString().split('T')[0],
+  payment_date: data.payment_date ? data.payment_date.toDate().toISOString().split('T')[0] : '',
   created_at: data.created_at.toDate().toISOString(),
   updated_at: data.updated_at.toDate().toISOString()
 });
@@ -61,7 +61,22 @@ export async function getSuppliers(filters?: { startDate?: string; endDate?: str
   // Ordenar no cliente
   return snapshot.docs
     .map(doc => convertSupplierFromFirestore(doc.id, doc.data() as FirestoreSupplier))
-    .sort((a, b) => new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime());
+    .sort((a, b) => {
+      // Se ambas as datas existirem, compara normalmente
+      if (a.payment_date && b.payment_date) {
+        return new Date(b.payment_date).getTime() - new Date(a.payment_date).getTime();
+      }
+      // Se apenas a.payment_date existir, coloca a antes
+      if (a.payment_date && !b.payment_date) {
+        return -1;
+      }
+      // Se apenas b.payment_date existir, coloca b antes
+      if (!a.payment_date && b.payment_date) {
+        return 1;
+      }
+      // Se nenhuma data existir, mantém a ordem original
+      return 0;
+    });
 }
 
 export async function getSupplierById(id: string) {
@@ -81,7 +96,7 @@ export async function createSupplier(supplier: Omit<Supplier, 'id' | 'created_at
   
   const docRef = await addDoc(suppliersRef, {
     ...supplier,
-    payment_date: supplier.payment_date ? Timestamp.fromDate(new Date(supplier.payment_date)) : now,
+    payment_date: supplier.payment_date ? Timestamp.fromDate(new Date(supplier.payment_date)) : null,
     created_at: now,
     updated_at: now,
     is_headquarter: supplier.is_headquarter || false,
@@ -102,9 +117,11 @@ export async function updateSupplier(
     updated_at: Timestamp.now()
   };
   
-  if (supplier.payment_date) {
-    updateData.payment_date = Timestamp.fromDate(new Date(supplier.payment_date));
-  }
+  // Se payment_date for uma string não vazia, converte para Timestamp
+  // Se for uma string vazia ou undefined, define como null
+  updateData.payment_date = supplier.payment_date 
+    ? Timestamp.fromDate(new Date(supplier.payment_date)) 
+    : null;
   
   await updateDoc(supplierRef, updateData);
   const updatedDoc = await getDoc(supplierRef);
